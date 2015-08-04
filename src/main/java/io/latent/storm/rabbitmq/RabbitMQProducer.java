@@ -6,6 +6,8 @@ import io.latent.storm.rabbitmq.config.ProducerConfig;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,16 +19,19 @@ import backtype.storm.topology.ReportedFailedException;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
-import com.rabbitmq.client.Channel;
 
 public class RabbitMQProducer implements Serializable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQProducer.class);
     private final Declarator declarator;
 
     private static RabbitMQConnectionManager RABBIT_MQ_CONNECTION_MANAGER;
     private transient Logger logger;
 
     private transient ConnectionConfig connectionConfig;
-    private transient Channel channel;
+    private transient AmqpChannel channel;
+
+    private static final Lock rmqInitLock = new ReentrantLock();
+    private static transient volatile boolean opened = false;
 
     public RabbitMQProducer() {
         this(new Declarator.NoOp());
@@ -34,6 +39,11 @@ public class RabbitMQProducer implements Serializable {
 
     public RabbitMQProducer(final Declarator declarator) {
         this.declarator = declarator;
+    }
+
+    private void createRabbitChannel() {
+        RabbitMQProducer.LOGGER.info("Trying to reget a channel");
+        this.channel = RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.closeAndReopenChannel(this.channel);
     }
 
     public void send(final Message message) {
@@ -46,17 +56,21 @@ public class RabbitMQProducer implements Serializable {
     private void sendMessageActual(final Message.MessageForSending message) {
 
         // wait until channel is avaialable
+        boolean regetChannel = false;
 
         try {
-            final AmqpChannel localChannel = RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.getChannel();
-            channel = localChannel.getChannel();
             final AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder().contentType(message.getContentType())
                     .contentEncoding(message.getContentEncoding()).deliveryMode(message.isPersistent() ? 2 : 1).headers(message.getHeaders()).build();
-            channel.basicPublish(message.getExchangeName(), message.getRoutingKey(), properties, message.getBody());
+            channel.getChannel().basicPublish(message.getExchangeName(), message.getRoutingKey(), properties, message.getBody());
+            if (RabbitMQProducer.LOGGER.isTraceEnabled()) {
+                RabbitMQProducer.LOGGER.trace("Succesfully published rabbitmq message");
+            }
         } catch (final AlreadyClosedException ace) {
+            regetChannel = true;
             logger.error("already closed exception while attempting to send message", ace);
             throw new ReportedFailedException(ace);
         } catch (final IOException ioe) {
+            regetChannel = true;
             logger.error("io exception while attempting to send message", ioe);
             throw new ReportedFailedException(ioe);
         } catch (final Exception e) {
@@ -66,6 +80,10 @@ public class RabbitMQProducer implements Serializable {
             } catch (final InterruptedException ie) {
             }
         } finally {
+
+            if (regetChannel) {
+                createRabbitChannel();
+            }
 
         }
     }
@@ -78,17 +96,25 @@ public class RabbitMQProducer implements Serializable {
 
     private void internalOpen() {
         try {
-            RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER = RabbitMQConnectionManager.getInstance(new RabbitConnectionConfig(connectionConfig
-                    .asConnectionFactory(), connectionConfig.getHighAvailabilityHosts() == null ? null : connectionConfig.getHighAvailabilityHosts()
-                            .toAddresses()));
-            RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.addConnection();// give a hint on no of conn
-            RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.addChannel();// give a hint on no of channels
+            RabbitMQProducer.rmqInitLock.lock();
+            if (!RabbitMQProducer.opened) {
+                RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER = RabbitMQConnectionManager.getInstance(new RabbitConnectionConfig(connectionConfig
+                        .asConnectionFactory(), connectionConfig.getHighAvailabilityHosts() == null ? null : connectionConfig.getHighAvailabilityHosts()
+                        .toAddresses()));
+                RabbitMQProducer.opened = true;
+                RabbitMQProducer.LOGGER.trace(String.format("Using rabbit connection manager %s", RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER));
+            }
+
+            RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.hintResourceAddition();
+            createRabbitChannel();
 
             // run any declaration prior to message sending
-            declarator.execute(channel);
+            declarator.execute(channel.getChannel());
         } catch (final Exception e) {
             logger.error("could not open connection on rabbitmq", e);
 
+        } finally {
+            RabbitMQProducer.rmqInitLock.unlock();
         }
     }
 
