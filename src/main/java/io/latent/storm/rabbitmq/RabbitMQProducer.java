@@ -12,9 +12,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pns.alltypes.rabbitmq.RabbitConnectionConfig;
-import pns.alltypes.rabbitmq.RabbitMQConnectionManager;
-import pns.alltypes.rabbitmq.RabbitMQConnectionManager.AmqpChannel;
+import pns.alltypes.rabbitmq.config.RabbitConnectionConfig;
+import pns.alltypes.rabbitmq.io.AmqpChannel;
+import pns.alltypes.rabbitmq.sustained.RabbitMQConnectionManager;
 import backtype.storm.topology.ReportedFailedException;
 
 import com.rabbitmq.client.AMQP;
@@ -102,7 +102,7 @@ public class RabbitMQProducer implements Serializable {
                         .asConnectionFactory(), connectionConfig.getHighAvailabilityHosts() == null ? null : connectionConfig.getHighAvailabilityHosts()
                         .toAddresses()));
                 RabbitMQProducer.opened = true;
-                RabbitMQProducer.LOGGER.trace(String.format("Using rabbit connection manager %s", RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER));
+                RabbitMQProducer.LOGGER.trace(String.format("Using RABBIT_MQ_CONNECTION_MANAGER %s", RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER));
             }
 
             RabbitMQProducer.RABBIT_MQ_CONNECTION_MANAGER.hintResourceAddition();

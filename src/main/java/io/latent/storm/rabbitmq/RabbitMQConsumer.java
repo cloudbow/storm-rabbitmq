@@ -9,9 +9,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pns.alltypes.rabbitmq.RabbitConnectionConfig;
-import pns.alltypes.rabbitmq.RabbitMQConnectionManager;
-import pns.alltypes.rabbitmq.RabbitMQConnectionManager.AmqpChannel;
+import pns.alltypes.rabbitmq.config.RabbitConnectionConfig;
+import pns.alltypes.rabbitmq.io.AmqpChannel;
+import pns.alltypes.rabbitmq.sustained.RabbitMQConnectionManager;
 
 import com.rabbitmq.client.Address;
 import com.rabbitmq.client.Channel;
@@ -53,7 +53,7 @@ public class RabbitMQConsumer implements Serializable {
             if (!RabbitMQConsumer.opened) {
                 RabbitMQConsumer.RABBIT_MQ_CONNECTION_MANAGER = RabbitMQConnectionManager.getInstance(new RabbitConnectionConfig(connectionConfig
                         .asConnectionFactory(), connectionConfig.getHighAvailabilityHosts() == null ? null : connectionConfig.getHighAvailabilityHosts()
-                        .toAddresses()));
+                                .toAddresses()));
                 RabbitMQConsumer.opened = true;
                 RabbitMQConsumer.LOGGER.trace(String.format("Using RABBIT_MQ_CONNECTION_MANAGER %s,", RabbitMQConsumer.RABBIT_MQ_CONNECTION_MANAGER));
 
