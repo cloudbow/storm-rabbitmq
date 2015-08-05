@@ -23,6 +23,8 @@ bin/**
 logs/**
 tmp/**
 tmp/**/*
+*.out
+*.log
 *.tmp
 *.bak
 *.swp
