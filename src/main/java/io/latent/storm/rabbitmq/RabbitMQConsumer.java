@@ -71,6 +71,9 @@ public class RabbitMQConsumer implements Serializable {
 
         this.reporter = errorReporter;
         this.logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
+        if(logger.isTraceEnabled()) {
+              logger.trace("RabbitMQ consumer construction complete");
+        }
     }
 
     public Message nextMessage() {
@@ -104,11 +107,16 @@ public class RabbitMQConsumer implements Serializable {
     }
 
     private void createRabbitChannel() {
-        logger.info("Trying to reget a channel");
+        if(logger.isTraceEnabled()) {
+           logger.trace("Reopening a channel from consumer class");
+        }
         this.channel = RabbitMQConsumer.RABBIT_MQ_CONNECTION_MANAGER.closeAndReopenChannel(this.channel);
     }
 
     public void ack(final Long msgId) {
+        if(logger.isTraceEnabled()) {
+           logger.trace(String.format("Going to ack message with id %s",msgId));
+        }
         boolean regetChannel = false;
 
         try {
@@ -128,6 +136,9 @@ public class RabbitMQConsumer implements Serializable {
     }
 
     public void fail(final Long msgId) {
+       
+       logger.error(String.format("failing message and reqeue? %b", requeueOnFail));
+       
         if (requeueOnFail) {
             failWithRedelivery(msgId);
         } else {
@@ -137,7 +148,7 @@ public class RabbitMQConsumer implements Serializable {
 
     public void failWithRedelivery(final Long msgId) {
         boolean regetChannel = false;
-
+        logger.error("failing with redelivery");
         try {
             channel.getChannel().basicReject(msgId, true);
         } catch (final ShutdownSignalException sse) {
@@ -156,7 +167,7 @@ public class RabbitMQConsumer implements Serializable {
 
     public void deadLetter(final Long msgId) {
         boolean regetChannel = false;
-
+        logger.info(String.format("deadletting message %s",msgId));
         try {
             channel.getChannel().basicReject(msgId, false);
         } catch (final ShutdownSignalException sse) {
@@ -176,7 +187,9 @@ public class RabbitMQConsumer implements Serializable {
     public void open() {
 
         try {
-
+            if(logger.isTraceEnabled()) {
+               logger.trace("opening rabbitmqconsumer");
+            }
             createRabbitChannel();
             if (prefetchCount > 0) {
                 logger.info("setting basic.qos / prefetch count to " + prefetchCount + " for " + queueName);
@@ -196,6 +209,9 @@ public class RabbitMQConsumer implements Serializable {
 
     private void createConsumer() {
         try {
+            if(logger.isTraceEnabled()) {
+               logger.trace("Request to create a consumer");
+            }
             final Channel ioChannel = channel.getChannel();
             consumer = new QueueingConsumer(ioChannel);
             consumerTag = ioChannel.basicConsume(queueName, isAutoAcking(), consumer);
@@ -213,7 +229,9 @@ public class RabbitMQConsumer implements Serializable {
     }
 
     public void close() {
-
+       if(logger.isTraceEnabled()) {
+          logger.trace("Closing RabbitMQConsumer");
+       }
     }
 
 }
