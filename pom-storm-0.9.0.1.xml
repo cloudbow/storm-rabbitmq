@@ -5,7 +5,7 @@
 
 	<groupId>io.latent</groupId>
 	<artifactId>storm-rabbitmq</artifactId>
-	<version>0.6.5</version>
+	<version>0.6.5-storm-0.9.0.1</version>
 	<packaging>jar</packaging>
 	<name>storm-rabbitmq</name>
 	<description>A library of tools for interacting with RabbitMQ from Storm.</description>
@@ -134,20 +134,20 @@
         </dependency -->
 
 
-		<!-- dependency>
+		<dependency>
 			<groupId>storm</groupId>
 			<artifactId>storm</artifactId>
 			<version>0.9.0.1</version>
 			<scope>provided</scope>
-		</dependency -->
+		</dependency>
         
         
-		<dependency>
+		<!-- dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
 			<version>0.9.4</version>
             <scope>provided</scope>
-        </dependency>
+        </dependency -->
         
 		<dependency>
 			<groupId>com.github.cloudbow</groupId>
