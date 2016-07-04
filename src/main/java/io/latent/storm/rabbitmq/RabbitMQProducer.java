@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import pns.alltypes.rabbitmq.config.RabbitConnectionConfig;
 import pns.alltypes.rabbitmq.io.AmqpChannel;
 import pns.alltypes.rabbitmq.sustained.RabbitMQConnectionManager;
-import backtype.storm.topology.ReportedFailedException;
+import org.apache.storm.topology.ReportedFailedException;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
